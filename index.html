@@ -37,5 +37,8 @@
       window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
     }
   </script>
+  <!-- domek: powrót do wyboru gier (https://jacekmoss.github.io/), widoczny tylko w menu gry -->
+  <script>window.gryHomeVisible = () => !window.__rysowanka || ['title', 'gallery'].includes(window.__rysowanka.S.scene);</script>
+  <script src="/home.js" data-corner="tl" defer></script>
 </body>
 </html>
