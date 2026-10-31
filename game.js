@@ -9,8 +9,7 @@
   const FONT = 'Outfit, system-ui, sans-serif';
   const EMOJI = '"Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif';
   const C = {
-    desk: '#EDE5F5', dot: '#E2D6F0', panel: '#FFFDF8', soft: '#F1EAFA', ink: '#3B3550',
-    violet: '#8A6FDF', coral: '#E8775A', mint: '#7BC8A4', mustard: '#E9B44C', red: '#E5483B',
+    desk: '#8E5BE6', ink: '#3B3550', violet: '#8A6FDF', red: '#E5483B',
   };
 
   const canvas = document.getElementById('game');
@@ -542,6 +541,7 @@
   function selectTool(i) {
     if (i < 0 || i >= TOOLS.length) return;
     const t = TOOLS[i];
+    tap('tool' + i);
     if (i === S.tool && t.id === 'naklejki') { S.drawer = true; sfx.tick(); return; }
     S.tool = i; store.set('rysowanka-tool', i);
     if (!NO_COLOR.has(t.id) && t.id !== 'wiadro') S.lastDraw = i;
@@ -549,14 +549,14 @@
     if (t.id === 'naklejki') { S.drawer = true; mow('Naklejki! Wybierz naklejkę.'); } else mow(t.say);
   }
   function selectColor(i) {
-    S.color = i; store.set('rysowanka-color', i);
+    S.color = i; store.set('rysowanka-color', i); tap('col' + i);
     sfx.tick();
     // kolor przy gumce albo tęczy znaczy: chcę rysować tym kolorem
     if (NO_COLOR.has(tool().id)) { S.tool = S.lastDraw; store.set('rysowanka-tool', S.tool); }
     mow(COLORS[i][1].charAt(0).toUpperCase() + COLORS[i][1].slice(1));
   }
   function selectSize(i) {
-    S.size = i; store.set('rysowanka-size', i);
+    S.size = i; store.set('rysowanka-size', i); tap('size' + i);
     sfx.tick();
     mow(tool().id === 'naklejki' ? STICKER_SIZE_SAY[i] : SIZE_SAY[i]);
   }
@@ -750,19 +750,19 @@
   // ---------- sterowanie (mysz, palec, rysik) ----------
   function toWorld(e) { return { x: (e.clientX - offX) / scale, y: (e.clientY - offY) / scale }; }
   function toggleSound() {
-    soundOn = !soundOn; store.set('rysowanka-sound', soundOn);
+    tap('sound'); soundOn = !soundOn; store.set('rysowanka-sound', soundOn);
     if (!soundOn && window.speechSynthesis) window.speechSynthesis.cancel();
     sfx.tick();
   }
   function galleryDown(p) {
-    if (hitC(p, GAL_BACK, 10)) { S.scene = 'draw'; sfx.tick(); return; }
+    if (hitC(p, GAL_BACK, 10)) { tap('back'); S.scene = 'draw'; sfx.tick(); return; }
     const pages = Math.max(1, Math.ceil(S.gallery.length / 8));
-    if (pages > 1 && hitC(p, GAL_PREV, 10)) { S.galPage = (S.galPage + pages - 1) % pages; sfx.tick(); return; }
-    if (pages > 1 && hitC(p, GAL_NEXT, 10)) { S.galPage = (S.galPage + 1) % pages; sfx.tick(); return; }
+    if (pages > 1 && hitC(p, GAL_PREV, 10)) { tap('prev'); S.galPage = (S.galPage + pages - 1) % pages; sfx.tick(); return; }
+    if (pages > 1 && hitC(p, GAL_NEXT, 10)) { tap('next'); S.galPage = (S.galPage + 1) % pages; sfx.tick(); return; }
     galCards().forEach(({ g, x, y }) => {
       const rec = g.rec;
-      if (hitC(p, { x: x + 40, y: y + 184, r: 20 }, 8)) { exportDrawing(rec); return; }
-      if (hitC(p, { x: x + GAL.cw - 40, y: y + 184, r: 20 }, 8)) {
+      if (hitC(p, { x: x + 40, y: y + 186, r: 20 }, 8)) { tap('dl' + rec.id); exportDrawing(rec); return; }
+      if (hitC(p, { x: x + GAL.cw - 40, y: y + 186, r: 20 }, 8)) {
         if (S.galConfirm && S.galConfirm.id === rec.id) { S.galConfirm = null; deleteDrawing(rec); } else { S.galConfirm = { id: rec.id, t: 3 }; sfx.tick(); }
         return;
       }
@@ -770,10 +770,10 @@
     });
   }
   function drawerDown(p) {
-    if (!inRect(p, DR) || hitC(p, DR_CLOSE, 6)) { S.drawer = false; sfx.tick(); return; }
+    if (!inRect(p, DR) || hitC(p, DR_CLOSE, 6)) { tap('close'); S.drawer = false; sfx.tick(); return; }
     if (p.y >= TAB_Y && p.y <= TAB_Y + TAB_H) {
       const i = Math.floor((p.x - TAB_X0) / TAB_STEP);
-      if (i >= 0 && i < CATS.length) { S.cat = i; sfx.tick(); mow(CATS[i].say); }
+      if (i >= 0 && i < CATS.length) { S.cat = i; tap('tab' + i); sfx.tick(); mow(CATS[i].say); }
       return;
     }
     const c = Math.floor((p.x - GRID_X0) / CELL_W), r = Math.floor((p.y - GRID_Y0) / CELL_H);
@@ -786,16 +786,16 @@
     if (!inRect(p, POP)) { S.popup = false; sfx.tick(); }
   }
   function rightDown(p) {
-    if (hitC(p, BTN.undo)) { undo(); return; }
+    if (hitC(p, BTN.undo)) { tap('undo'); undo(); return; }
     for (let i = 0; i < 5; i++) if (hitC(p, sizeBtn(i), 3)) { selectSize(i); return; }
-    if (hitC(p, BTN.nowa)) { S.popup = true; sfx.tick(); mow('Nowa kartka. Jaki kolor?'); return; }
-    if (hitC(p, BTN.zapisz)) { onSave(); return; }
-    if (hitC(p, BTN.galeria)) { openGallery(); return; }
+    if (hitC(p, BTN.nowa)) { tap('nowa'); S.popup = true; sfx.tick(); mow('Nowa kartka. Jaki kolor?'); return; }
+    if (hitC(p, BTN.zapisz)) { tap('zapisz'); onSave(); return; }
+    if (hitC(p, BTN.galeria)) { tap('galeria'); openGallery(); return; }
   }
   function barDown(p) {
     if (tool().id === 'naklejki') {
-      if (inRect(p, STICKER_OPEN, 6)) { S.drawer = true; sfx.tick(); return; }
-      S.recent.forEach((em, i) => { if (hitC(p, recentSpot(i), 3)) pickSticker(em); });
+      if (inRect(p, STICKER_OPEN, 6)) { tap('open'); S.drawer = true; sfx.tick(); return; }
+      S.recent.forEach((em, i) => { if (hitC(p, recentSpot(i), 3)) { tap('rec' + i); pickSticker(em); } });
       return;
     }
     for (let i = 0; i < COLORS.length; i++) if (hitC(p, swatch(i), 6)) { selectColor(i); return; }
@@ -860,6 +860,7 @@
 
   function update(dt) {
     S.time += dt;
+    for (const k in press) press[k] = Math.max(0, press[k] - dt * 5);
     for (let i = fx.length - 1; i >= 0; i--) { fx[i].t += dt; if (fx[i].t >= fx[i].dur) fx.splice(i, 1); }
     for (let i = parts.length - 1; i >= 0; i--) {
       const p = parts[i];
@@ -978,70 +979,149 @@
         break;
     }
   }
+  // ---------- wygląd: tło, szklane panele, przyciski-cukierki ----------
+  const press = {};
+  const tap = (k) => { press[k] = 1; };
+  const pk = (k) => 1 - (press[k] || 0) * 0.14;
+  const SHADOW = 'rgba(40,20,90,.28)';
+  /* miękkie plamy światła i rysuneczki w tle (losowane raz) */
+  const BLOBS = [[110, 80, 280, '#FFD1F0'], [1180, 110, 300, '#9BE7FF'], [640, 760, 420, '#FFE29A'], [1000, 600, 240, '#C8B6FF'], [240, 640, 260, '#A6F0C6']];
+  const DOODLES = Array.from({ length: 26 }, (_, i) => ({ x: rand(0, W), y: rand(0, H), r: rand(9, 22), k: i % 4, rot: rand(0, 6.28), sp: rand(0.25, 0.7) }));
+  function heart(x, y, r, fill) {
+    ctx.beginPath(); ctx.moveTo(x, y + r * 0.9);
+    ctx.bezierCurveTo(x - r * 1.4, y - r * 0.1, x - r * 0.6, y - r * 1.1, x, y - r * 0.35);
+    ctx.bezierCurveTo(x + r * 0.6, y - r * 1.1, x + r * 1.4, y - r * 0.1, x, y + r * 0.9);
+    ctx.fillStyle = fill; ctx.fill();
+  }
+  function drawDesk() {
+    const g = ctx.createLinearGradient(0, 0, W, H);
+    g.addColorStop(0, '#6A5AE0'); g.addColorStop(0.55, '#A35BE8'); g.addColorStop(1, '#FF7EB3');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    for (const [x, y, r, c] of BLOBS) {
+      const rg = ctx.createRadialGradient(x, y, 0, x, y, r);
+      rg.addColorStop(0, c + '99'); rg.addColorStop(1, c + '00');
+      ctx.fillStyle = rg; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    const white = 'rgba(255,255,255,.18)';
+    ctx.save(); ctx.strokeStyle = white; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (const d of DOODLES) {
+      ctx.save(); ctx.translate(d.x, d.y + Math.sin(S.time * d.sp + d.rot) * 6); ctx.rotate(d.rot + S.time * d.sp * 0.15);
+      if (d.k === 0) star(0, 0, d.r, white, 5, 0.45);
+      else if (d.k === 1) { ctx.beginPath(); ctx.arc(0, 0, d.r * 0.7, 0, Math.PI * 2); ctx.stroke(); }
+      else if (d.k === 2) { ctx.beginPath(); ctx.moveTo(-d.r, 0); ctx.bezierCurveTo(-d.r / 2, -d.r, d.r / 2, d.r, d.r, 0); ctx.stroke(); }
+      else heart(0, 0, d.r * 0.7, white);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+  /* półprzezroczysty panel jak z mlecznego szkła */
+  function glass(x, y, w, h, r) {
+    ctx.save();
+    ctx.shadowColor = SHADOW; ctx.shadowBlur = 20 * scale * DPR; ctx.shadowOffsetY = 6 * scale * DPR;
+    ctx.fillStyle = 'rgba(255,255,255,.2)'; rr(x, y, w, h, r); ctx.fill();
+    ctx.restore();
+    const g = ctx.createLinearGradient(0, y, 0, y + h);
+    g.addColorStop(0, 'rgba(255,255,255,.32)'); g.addColorStop(1, 'rgba(255,255,255,.08)');
+    ctx.fillStyle = g; rr(x, y, w, h, r); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.6)'; ctx.lineWidth = 2; rr(x + 1, y + 1, w - 2, h - 2, r - 1); ctx.stroke();
+  }
+  /* wypukły, błyszczący przycisk; icon() rysuje biały znaczek w środku (0,0) */
+  function candy(x, y, r, color, key, icon) {
+    const s = key ? pk(key) : 1;
+    ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
+    circle(0, 6, r, 'rgba(40,20,90,.25)');
+    circle(0, 4, r, shade(color, -0.3));
+    const g = ctx.createLinearGradient(0, -r, 0, r);
+    g.addColorStop(0, shade(color, 0.3)); g.addColorStop(1, color);
+    circle(0, 0, r, g);
+    ctx.beginPath(); ctx.ellipse(0, -r * 0.48, r * 0.6, r * 0.28, 0, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,255,255,.38)'; ctx.fill();
+    if (icon) icon();
+    ctx.restore();
+  }
+  /* pigułka-cukierek (prostokąt z zaokrągleniem) */
+  function candyRect(x, y, w, h, r, color, key, icon) {
+    const s = key ? pk(key) : 1;
+    ctx.save(); ctx.translate(x + w / 2, y + h / 2); ctx.scale(s, s);
+    ctx.fillStyle = 'rgba(40,20,90,.22)'; rr(-w / 2, -h / 2 + 6, w, h, r); ctx.fill();
+    ctx.fillStyle = shade(color, -0.3); rr(-w / 2, -h / 2 + 4, w, h, r); ctx.fill();
+    const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
+    g.addColorStop(0, shade(color, 0.3)); g.addColorStop(1, color);
+    ctx.fillStyle = g; rr(-w / 2, -h / 2, w, h, r); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.3)'; rr(-w / 2 + 8, -h / 2 + 4, w - 16, h * 0.3, h * 0.15); ctx.fill();
+    if (icon) icon();
+    ctx.restore();
+  }
   function drawTools() {
-    ctx.fillStyle = C.panel; rr(6, 6, 148, 704, 24); ctx.fill();
+    glass(6, 6, 148, 704, 28);
     TOOLS.forEach((t, i) => {
       const y = TOOL_Y0 + i * TOOL_H + TOOL_H / 2, sel = i === S.tool;
       if (sel) {
-        ctx.fillStyle = C.soft; rr(10, y - TOOL_H / 2 + 3, 156, TOOL_H - 6, 16); ctx.fill();
-        ctx.fillStyle = C.violet; rr(10, y - 14, 6, 28, 3); ctx.fill();
+        ctx.save();
+        ctx.shadowColor = SHADOW; ctx.shadowBlur = 14 * scale * DPR; ctx.shadowOffsetY = 4 * scale * DPR;
+        ctx.fillStyle = '#FFFFFF'; rr(12, y - TOOL_H / 2 + 4, 162, TOOL_H - 8, 20); ctx.fill();
+        ctx.restore();
+        const g = ctx.createLinearGradient(12, 0, 30, 0); g.addColorStop(0, '#FF7EB3'); g.addColorStop(1, '#8A6FDF');
+        ctx.fillStyle = g; rr(12, y - 15, 7, 30, 3.5); ctx.fill();
       }
       const c = t.id === 'gumka' ? '#F48FB1' : col();
-      ctx.save(); ctx.translate(sel ? 26 : 14, y); if (!sel) ctx.scale(0.92, 0.92);
+      const bob = sel ? Math.sin(S.time * 4) * 2 : 0, s = pk('tool' + i);
+      ctx.save(); ctx.translate(sel ? 30 : 14, y + bob); ctx.scale(sel ? s : 0.9 * s, sel ? s : 0.9 * s);
       drawImpl(t.id, c);
       ctx.restore();
     });
   }
 
   // ---------- rysowanie: prawa kolumna ----------
-  function btnBase(b, k = 1) {
-    ctx.save(); ctx.globalAlpha *= k;
-    circle(b.x, b.y + 3, b.r, 'rgba(59,53,80,.12)'); circle(b.x, b.y, b.r, C.soft);
-    ctx.restore();
-  }
   function drawRight() {
-    ctx.fillStyle = C.panel; rr(1146, 6, 122, 704, 24); ctx.fill();
-    // cofnij
-    const can = undoStack.length > 0;
-    ctx.save(); ctx.globalAlpha = can ? 1 : 0.4;
-    btnBase(BTN.undo);
-    ctx.translate(BTN.undo.x, BTN.undo.y);
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 7; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(16, 14); ctx.quadraticCurveTo(18, -9, -8, -9); ctx.stroke();
-    poly([[-20, -9], [-6, -21], [-6, 3]], C.ink);
+    glass(1146, 6, 122, 704, 28);
+    ctx.save(); if (!undoStack.length) ctx.globalAlpha = 0.45;
+    candy(BTN.undo.x, BTN.undo.y, BTN.undo.r, '#FFA620', 'undo', () => {
+      ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 7; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(15, 13); ctx.quadraticCurveTo(17, -8, -7, -8); ctx.stroke();
+      poly([[-19, -8], [-5, -20], [-5, 4]], '#FFFFFF');
+    });
     ctx.restore();
     // grubość
-    ctx.fillStyle = C.soft; rr(RX - 38, 92, 76, 316, 30); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.22)'; rr(RX - 40, 90, 80, 320, 34); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,.45)'; ctx.lineWidth = 2; ctx.stroke();
     const stick = tool().id === 'naklejki';
     const c = NO_COLOR.has(tool().id) ? C.ink : col();
     for (let i = 0; i < 5; i++) {
-      const b = sizeBtn(i);
-      if (i === S.size) { circle(b.x, b.y, b.r, '#FFFFFF'); ctx.strokeStyle = C.violet; ctx.lineWidth = 4; ctx.stroke(); }
-      if (stick) drawEmoji(S.sticker, b.x, b.y, 18 + i * 8);
-      else {
-        circle(b.x, b.y, [3, 6, 9.5, 14, 20][i], c);
-        if (c === '#FFFFFF') { ctx.strokeStyle = '#CFC6DD'; ctx.lineWidth = 2; ctx.stroke(); }
+      const b = sizeBtn(i), sel = i === S.size, s = pk('size' + i);
+      ctx.save(); ctx.translate(b.x, b.y); ctx.scale(s, s);
+      if (sel) {
+        ctx.save(); ctx.shadowColor = SHADOW; ctx.shadowBlur = 10 * scale * DPR; ctx.shadowOffsetY = 3 * scale * DPR;
+        circle(0, 0, b.r + 2, '#FFFFFF'); ctx.restore();
       }
+      if (stick) drawEmoji(S.sticker, 0, 0, 18 + i * 8);
+      else {
+        circle(0, 0, [3, 6, 9.5, 14, 20][i], c);
+        if (c === '#FFFFFF' || !sel) { ctx.strokeStyle = sel ? '#D8CFE6' : 'rgba(255,255,255,.85)'; ctx.lineWidth = 2; ctx.stroke(); }
+      }
+      ctx.restore();
     }
-    // nowa kartka
-    btnBase(BTN.nowa);
-    ctx.save(); ctx.translate(BTN.nowa.x, BTN.nowa.y);
-    ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(-15, -20); ctx.lineTo(7, -20); ctx.lineTo(15, -12); ctx.lineTo(15, 20); ctx.lineTo(-15, 20); ctx.closePath(); ctx.fill(); ctx.stroke();
-    circle(13, 13, 12, C.mint);
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(13, 6); ctx.lineTo(13, 20); ctx.moveTo(6, 13); ctx.lineTo(20, 13); ctx.stroke();
-    ctx.restore();
-    // zapisz (aparat)
-    btnBase(BTN.zapisz);
-    ctx.save(); ctx.translate(BTN.zapisz.x, BTN.zapisz.y);
-    ctx.fillStyle = C.coral; rr(-9, -19, 18, 9, 3); ctx.fill(); rr(-22, -13, 44, 30, 8); ctx.fill();
-    circle(0, 2, 11, '#FFFFFF'); circle(0, 2, 6.5, C.ink); circle(-2, 0, 2, '#FFFFFF'); circle(15, -7, 2.5, '#FFE27A');
-    ctx.restore();
-    // galeria (obrazek w ramce)
-    btnBase(BTN.galeria);
-    drawFrameIcon(BTN.galeria.x, BTN.galeria.y, 1);
+    candy(BTN.nowa.x, BTN.nowa.y, BTN.nowa.r, '#22C08A', 'nowa', () => sheetIcon(1, '#22C08A'));
+    candy(BTN.zapisz.x, BTN.zapisz.y, BTN.zapisz.r, '#FF5A6E', 'zapisz', () => {
+      ctx.fillStyle = '#FFFFFF'; rr(-8, -18, 16, 8, 3); ctx.fill(); rr(-21, -12, 42, 28, 8); ctx.fill();
+      circle(0, 2, 10, '#FF5A6E'); circle(0, 2, 6, '#FFFFFF'); circle(0, 2, 3.5, '#FF5A6E'); circle(14, -6, 2.5, '#FF5A6E');
+    });
+    candy(BTN.galeria.x, BTN.galeria.y, BTN.galeria.r, '#3D9BFF', 'galeria', () => {
+      ctx.fillStyle = '#FFFFFF'; rr(-21, -16, 42, 32, 6); ctx.fill();
+      ctx.fillStyle = '#BFE3FA'; rr(-16, -11, 32, 22, 3); ctx.fill();
+      circle(8, -4, 4, '#FFC93C');
+      poly([[-16, 11], [-6, -1], [2, 7], [7, 2], [16, 11]], '#3BB273');
+    });
     drawSoundBtn();
+  }
+  /* kartka z zagiętym rogiem i plusem */
+  function sheetIcon(s, plus) {
+    ctx.save(); ctx.scale(s, s);
+    ctx.fillStyle = '#FFFFFF';
+    ctx.beginPath(); ctx.moveTo(-14, -19); ctx.lineTo(6, -19); ctx.lineTo(14, -11); ctx.lineTo(14, 19); ctx.lineTo(-14, 19); ctx.closePath(); ctx.fill();
+    poly([[6, -19], [6, -11], [14, -11]], 'rgba(40,20,90,.18)');
+    ctx.strokeStyle = plus; ctx.lineWidth = 4.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, 10); ctx.moveTo(-7, 3); ctx.lineTo(7, 3); ctx.stroke();
+    ctx.restore();
   }
   function drawFrameIcon(x, y, s) {
     ctx.save(); ctx.translate(x, y); ctx.scale(s, s);
@@ -1053,63 +1133,98 @@
   }
   function drawSoundBtn() {
     const b = BTN.sound;
-    circle(b.x, b.y, b.r, C.soft);
-    ctx.save(); ctx.translate(b.x - 3, b.y); ctx.scale(0.7, 0.7);
-    ctx.fillStyle = C.ink;
-    ctx.beginPath(); ctx.moveTo(-14, -6); ctx.lineTo(-6, -6); ctx.lineTo(4, -15); ctx.lineTo(4, 15); ctx.lineTo(-6, 6); ctx.lineTo(-14, 6); ctx.fill();
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.beginPath();
-    if (soundOn) { ctx.arc(6, 0, 8, -0.9, 0.9); ctx.moveTo(6 + Math.cos(-0.9) * 14, Math.sin(-0.9) * 14); ctx.arc(6, 0, 14, -0.9, 0.9); }
-    else { ctx.moveTo(10, -8); ctx.lineTo(22, 8); ctx.moveTo(22, -8); ctx.lineTo(10, 8); }
-    ctx.stroke();
-    ctx.restore();
+    candy(b.x, b.y, b.r, '#9B7BFF', 'sound', () => {
+      ctx.save(); ctx.translate(-3, 0); ctx.scale(0.62, 0.62);
+      ctx.fillStyle = '#FFFFFF';
+      ctx.beginPath(); ctx.moveTo(-14, -6); ctx.lineTo(-6, -6); ctx.lineTo(4, -15); ctx.lineTo(4, 15); ctx.lineTo(-6, 6); ctx.lineTo(-14, 6); ctx.fill();
+      ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.beginPath();
+      if (soundOn) { ctx.arc(6, 0, 8, -0.9, 0.9); ctx.moveTo(6 + Math.cos(-0.9) * 14, Math.sin(-0.9) * 14); ctx.arc(6, 0, 14, -0.9, 0.9); }
+      else { ctx.moveTo(10, -8); ctx.lineTo(22, 8); ctx.moveTo(22, -8); ctx.lineTo(10, 8); }
+      ctx.stroke();
+      ctx.restore();
+    });
   }
 
-  // ---------- rysowanie: dolny pasek ----------
+  // ---------- rysowanie: dolny pasek (plamy farby) ----------
+  /* każda plama ma swój nieregularny kształt */
+  const BLOB_SHAPES = COLORS.map(() => Array.from({ length: 9 }, () => rand(0.88, 1.08)));
+  function paintBlob(x, y, r, c, shape) {
+    const n = shape.length, pts = shape.map((k, i) => {
+      const a = (i / n) * Math.PI * 2;
+      return [x + Math.cos(a) * r * k, y + Math.sin(a) * r * k];
+    });
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const [ax, ay] = pts[i % n], [bx, by] = pts[(i + 1) % n], mx = (ax + bx) / 2, my = (ay + by) / 2;
+      if (i === 0) ctx.moveTo(mx, my); else ctx.quadraticCurveTo(ax, ay, mx, my);
+    }
+    ctx.closePath();
+    const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.1);
+    g.addColorStop(0, c === '#FFFFFF' ? '#FFFFFF' : shade(c, 0.35)); g.addColorStop(1, c === '#FFFFFF' ? '#E4DDF0' : c);
+    ctx.fillStyle = g; ctx.fill();
+    ellipse(x - r * 0.32, y - r * 0.38, r * 0.28, r * 0.16, 'rgba(255,255,255,.65)', -0.5);
+  }
   function drawBar() {
-    ctx.fillStyle = C.panel; rr(BAR.x, BAR.y, BAR.w, BAR.h, 24); ctx.fill();
+    glass(BAR.x, BAR.y, BAR.w, BAR.h, 28);
     if (tool().id === 'naklejki') {
-      // przycisk otwierający szufladę z naklejkami
       const o = STICKER_OPEN;
-      ctx.fillStyle = C.violet; rr(o.x, o.y, o.w, o.h, 18); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,.9)'; rr(o.x + 8, o.y + 8, o.w - 16, o.h - 16, 12); ctx.fill();
-      [['🐶', -24, -14], ['🚗', 24, -14], ['🌸', -24, 14], ['⭐', 24, 14]].forEach(([em, dx, dy]) => drawEmoji(em, o.x + o.w / 2 + dx, o.y + o.h / 2 + dy, 28));
+      candyRect(o.x, o.y, o.w, o.h, 20, '#7C5CFF', 'open', () => {
+        ctx.fillStyle = 'rgba(255,255,255,.92)'; rr(-o.w / 2 + 9, -o.h / 2 + 9, o.w - 18, o.h - 18, 12); ctx.fill();
+        [['🐶', -24, -13], ['🚗', 24, -13], ['🌸', -24, 13], ['⭐', 24, 13]].forEach(([em, dx, dy]) => drawEmoji(em, dx, dy, 27));
+      });
       S.recent.forEach((em, i) => {
-        const b = recentSpot(i), sel = em === S.sticker;
-        if (sel) { circle(b.x, b.y, b.r + 3, C.soft); ctx.strokeStyle = C.violet; ctx.lineWidth = 4; ctx.stroke(); }
-        drawEmoji(em, b.x, b.y, sel ? 52 : 46);
+        const b = recentSpot(i), sel = em === S.sticker, s = pk('rec' + i);
+        ctx.save(); ctx.translate(b.x, b.y); ctx.scale(s, s);
+        if (sel) {
+          ctx.save(); ctx.shadowColor = SHADOW; ctx.shadowBlur = 10 * scale * DPR; ctx.shadowOffsetY = 3 * scale * DPR;
+          circle(0, 0, b.r + 4, '#FFFFFF'); ctx.restore();
+        }
+        drawEmoji(em, 0, sel ? Math.sin(S.time * 5) * 2 : 0, sel ? 52 : 46);
+        ctx.restore();
       });
       return;
     }
     const dim = NO_COLOR.has(tool().id);
     COLORS.forEach(([c], i) => {
-      const b = swatch(i), sel = i === S.color && !dim;
-      const r = sel ? b.r + 4 + Math.sin(S.time * 4) * 1.5 : b.r;
-      ctx.save(); if (dim) ctx.globalAlpha = 0.55;
-      circle(b.x, b.y + 3, r, 'rgba(59,53,80,.15)');
-      circle(b.x, b.y, r, c);
-      if (c === '#FFFFFF') { ctx.strokeStyle = '#D8CFE6'; ctx.lineWidth = 2; ctx.stroke(); }
-      if (c === '#C9952A') { circle(b.x - r * 0.3, b.y - r * 0.3, r * 0.3, 'rgba(255,255,255,.5)'); }
-      if (sel) { circle(b.x, b.y, r + 6); ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.stroke(); }
+      const b = swatch(i), sel = i === S.color && !dim, s = pk('col' + i);
+      const r = sel ? b.r + 5 : b.r, lift = sel ? Math.abs(Math.sin(S.time * 3.5)) * 5 + 4 : 0;
+      ctx.save(); if (dim) ctx.globalAlpha = 0.5;
+      ctx.translate(b.x, b.y); ctx.scale(s, s);
+      ellipse(0, r * 0.85, r * 0.8, r * 0.22, 'rgba(40,20,90,.22)');
+      if (sel) { circle(0, -lift, r + 6, '#FFFFFF'); }
+      paintBlob(0, -lift, r, c, BLOB_SHAPES[i]);
       ctx.restore();
     });
   }
 
   // ---------- rysowanie: kartka ----------
-  function drawDesk() {
-    ctx.fillStyle = C.desk; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = C.dot;
-    for (let y = 20; y < H; y += 40) for (let x = (y / 40) % 2 ? 20 : 40; x < W; x += 40) { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); }
+  /* kawałek taśmy washi */
+  function tape(x, y, rot, c) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+    ctx.fillStyle = c; ctx.globalAlpha = 0.88;
+    ctx.beginPath(); ctx.moveTo(-42, -14);
+    for (let i = 0; i <= 6; i++) ctx.lineTo(-42 + i * 14, -14 + (i % 2 ? 3 : 0));
+    ctx.lineTo(42, 14);
+    for (let i = 6; i >= 0; i--) ctx.lineTo(-42 + i * 14, 14 - (i % 2 ? 3 : 0));
+    ctx.closePath(); ctx.fill();
+    ctx.globalAlpha = 0.35; ctx.fillStyle = '#FFFFFF';
+    for (let i = -3; i <= 3; i++) ctx.fillRect(i * 12 - 2, -12, 5, 24);
+    ctx.restore();
   }
   function drawPaper() {
     ctx.save();
-    ctx.shadowColor = 'rgba(59,53,80,.22)'; ctx.shadowBlur = 16 * scale * DPR; ctx.shadowOffsetY = 5 * scale * DPR;
-    ctx.fillStyle = S.paper; ctx.fillRect(PAPER.x, PAPER.y, PAPER.w, PAPER.h);
+    ctx.shadowColor = 'rgba(40,20,90,.38)'; ctx.shadowBlur = 28 * scale * DPR; ctx.shadowOffsetY = 10 * scale * DPR;
+    ctx.fillStyle = S.paper; rr(PAPER.x, PAPER.y, PAPER.w, PAPER.h, 6); ctx.fill();
     ctx.restore();
+    ctx.save(); rr(PAPER.x, PAPER.y, PAPER.w, PAPER.h, 6); ctx.clip();
     ctx.drawImage(paint, PAPER.x, PAPER.y, PAPER.w, PAPER.h);
     const s = S.stroke;
     if (s && s.t.id !== 'gumka') {
       ctx.save(); ctx.globalAlpha = s.t.alpha; ctx.drawImage(strokeC, PAPER.x, PAPER.y, PAPER.w, PAPER.h); ctx.restore();
     }
+    ctx.restore();
+    tape(PAPER.x + 18, PAPER.y + 12, -0.75, '#FF9EC4');
+    tape(PAPER.x + PAPER.w - 18, PAPER.y + 12, 0.75, '#8ED8FF');
   }
   /* podgląd: naklejka pod palcem, kółko gumki, kursor myszy */
   function drawPreview() {
@@ -1142,48 +1257,54 @@
   }
 
   // ---------- rysowanie: szuflada z naklejkami ----------
-  function drawDrawer() {
-    ctx.fillStyle = 'rgba(59,53,80,.28)'; ctx.fillRect(0, 0, W, H);
+  const TAB_COLORS = ['#FFA620', '#FF7A45', '#3D9BFF', '#22C08A', '#FF5A6E', '#7C5CFF', '#FF4FA3', '#FFC23C', '#9B7BFF'];
+  function card(x, y, w, h, r) {
     ctx.save();
-    ctx.shadowColor = 'rgba(59,53,80,.3)'; ctx.shadowBlur = 24 * scale * DPR;
-    ctx.fillStyle = C.panel; rr(DR.x, DR.y, DR.w, DR.h, 30); ctx.fill();
+    ctx.shadowColor = 'rgba(40,20,90,.4)'; ctx.shadowBlur = 30 * scale * DPR; ctx.shadowOffsetY = 10 * scale * DPR;
+    ctx.fillStyle = '#FFFFFF'; rr(x, y, w, h, r); ctx.fill();
+    ctx.restore();
+  }
+  function closeBtn(b) {
+    candy(b.x, b.y, b.r, '#FF5A6E', 'close', () => {
+      ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(-9, -9); ctx.lineTo(9, 9); ctx.moveTo(9, -9); ctx.lineTo(-9, 9); ctx.stroke();
+    });
+  }
+  function drawDrawer() {
+    ctx.fillStyle = 'rgba(40,20,90,.35)'; ctx.fillRect(0, 0, W, H);
+    card(DR.x, DR.y, DR.w, DR.h, 34);
+    // pasek kategorii w kolorze wybranej zakładki
+    ctx.save(); rr(DR.x, DR.y, DR.w, DR.h, 34); ctx.clip();
+    ctx.fillStyle = shade(TAB_COLORS[S.cat], 0.82); ctx.fillRect(DR.x, DR.y, DR.w, 96);
     ctx.restore();
     CATS.forEach((c, i) => {
-      const x = TAB_X0 + i * TAB_STEP, sel = i === S.cat;
-      ctx.fillStyle = sel ? C.violet : C.soft; rr(x, TAB_Y, TAB_STEP - 8, TAB_H, 18); ctx.fill();
-      drawEmoji(c.icon, x + (TAB_STEP - 8) / 2, TAB_Y + TAB_H / 2, sel ? 52 : 44);
+      const x = TAB_X0 + i * TAB_STEP, sel = i === S.cat, w = TAB_STEP - 10;
+      if (sel) candyRect(x, TAB_Y - 4, w, TAB_H, 20, TAB_COLORS[i], 'tab' + i, () => drawEmoji(c.icon, 0, Math.sin(S.time * 4) * 2, 52));
+      else {
+        ctx.fillStyle = 'rgba(255,255,255,.75)'; rr(x, TAB_Y + 4, w, TAB_H - 8, 18); ctx.fill();
+        drawEmoji(c.icon, x + w / 2, TAB_Y + TAB_H / 2, 40);
+      }
     });
-    circle(DR_CLOSE.x, DR_CLOSE.y, DR_CLOSE.r, C.soft);
-    ctx.strokeStyle = C.ink; ctx.lineWidth = 6; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(DR_CLOSE.x - 10, DR_CLOSE.y - 10); ctx.lineTo(DR_CLOSE.x + 10, DR_CLOSE.y + 10);
-    ctx.moveTo(DR_CLOSE.x + 10, DR_CLOSE.y - 10); ctx.lineTo(DR_CLOSE.x - 10, DR_CLOSE.y + 10); ctx.stroke();
+    closeBtn(DR_CLOSE);
     CATS[S.cat].items.forEach(([em], i) => {
       const cx = GRID_X0 + (i % GRID_COLS) * CELL_W + CELL_W / 2, cy = GRID_Y0 + Math.floor(i / GRID_COLS) * CELL_H + CELL_H / 2;
-      if (em === S.sticker) { circle(cx, cy, 38, C.soft); ctx.strokeStyle = C.violet; ctx.lineWidth = 3; ctx.stroke(); }
-      drawEmoji(em, cx, cy + Math.sin(S.time * 3 + i) * 1.5, 64);
+      if (em === S.sticker) { circle(cx, cy, 40, shade(TAB_COLORS[S.cat], 0.8)); }
+      drawEmoji(em, cx, cy + Math.sin(S.time * 3 + i) * 1.5, 66);
     });
   }
 
   // ---------- rysowanie: wybór nowej kartki ----------
   function drawPopup() {
-    ctx.fillStyle = 'rgba(59,53,80,.28)'; ctx.fillRect(0, 0, W, H);
-    ctx.save();
-    ctx.shadowColor = 'rgba(59,53,80,.3)'; ctx.shadowBlur = 24 * scale * DPR;
-    ctx.fillStyle = C.panel; rr(POP.x, POP.y, POP.w, POP.h, 30); ctx.fill();
-    ctx.restore();
-    ctx.save(); ctx.translate(POP.x + POP.w / 2, POP.y + 66); ctx.scale(1.5, 1.5);
-    ctx.fillStyle = '#FFFFFF'; ctx.strokeStyle = C.ink; ctx.lineWidth = 3; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(-15, -20); ctx.lineTo(7, -20); ctx.lineTo(15, -12); ctx.lineTo(15, 20); ctx.lineTo(-15, 20); ctx.closePath(); ctx.fill(); ctx.stroke();
-    circle(13, 13, 12, C.mint);
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4; ctx.lineCap = 'round';
-    ctx.beginPath(); ctx.moveTo(13, 6); ctx.lineTo(13, 20); ctx.moveTo(6, 13); ctx.lineTo(20, 13); ctx.stroke();
-    ctx.restore();
+    ctx.fillStyle = 'rgba(40,20,90,.35)'; ctx.fillRect(0, 0, W, H);
+    card(POP.x, POP.y, POP.w, POP.h, 34);
+    candy(POP.x + POP.w / 2, POP.y + 64, 40, '#22C08A', null, () => sheetIcon(1.05, '#22C08A'));
     PAPERS.forEach(([c], i) => {
-      const r = sheet(i), lift = Math.sin(S.time * 3 + i * 0.8) * 3;
-      ctx.save(); ctx.translate(0, lift);
-      ctx.fillStyle = 'rgba(59,53,80,.15)'; rr(r.x + 3, r.y + 5, r.w, r.h, 8); ctx.fill();
-      ctx.fillStyle = c; rr(r.x, r.y, r.w, r.h, 8); ctx.fill();
-      ctx.strokeStyle = '#D8CFE6'; ctx.lineWidth = 2; ctx.stroke();
+      const r = sheet(i), lift = Math.sin(S.time * 3 + i * 0.8) * 3, rot = (i % 2 ? 1 : -1) * 0.05;
+      ctx.save(); ctx.translate(r.x + r.w / 2, r.y + r.h / 2 + lift); ctx.rotate(rot);
+      ctx.fillStyle = 'rgba(40,20,90,.18)'; rr(-r.w / 2 + 3, -r.h / 2 + 6, r.w, r.h, 8); ctx.fill();
+      ctx.fillStyle = c; rr(-r.w / 2, -r.h / 2, r.w, r.h, 8); ctx.fill();
+      ctx.strokeStyle = '#E4DDF0'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = i % 2 ? '#8ED8FF' : '#FF9EC4'; ctx.globalAlpha = 0.85; ctx.fillRect(-14, -r.h / 2 - 7, 28, 13);
       ctx.restore();
     });
   }
@@ -1191,20 +1312,20 @@
   // ---------- rysowanie: galeria ----------
   function galCards() {
     return S.gallery.slice(S.galPage * 8, S.galPage * 8 + 8).map((g, i) => ({
-      g, x: GAL.x0 + (i % GAL.cols) * (GAL.cw + GAL.gx), y: GAL.y0 + Math.floor(i / GAL.cols) * (GAL.ch + GAL.gy),
+      g, i, x: GAL.x0 + (i % GAL.cols) * (GAL.cw + GAL.gx), y: GAL.y0 + Math.floor(i / GAL.cols) * (GAL.ch + GAL.gy),
     }));
   }
   function drawGallery() {
-    // powrót do rysowania
-    const b = GAL_BACK;
-    circle(b.x, b.y + 4, b.r, 'rgba(59,53,80,.18)'); circle(b.x, b.y, b.r, C.coral);
-    ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-    ctx.beginPath(); ctx.moveTo(b.x + 16, b.y); ctx.lineTo(b.x - 14, b.y); ctx.moveTo(b.x - 2, b.y - 14); ctx.lineTo(b.x - 16, b.y); ctx.lineTo(b.x - 2, b.y + 14); ctx.stroke();
-    drawFrameIcon(W / 2 - 150, 58, 1.3);
-    ctx.fillStyle = C.ink; ctx.font = `700 46px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-    ctx.fillText('Moje rysunki', W / 2 - 112, 60);
+    candy(GAL_BACK.x, GAL_BACK.y, GAL_BACK.r, '#FF7A45', 'back', () => {
+      ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 9; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(15, 0); ctx.lineTo(-14, 0); ctx.moveTo(-2, -14); ctx.lineTo(-16, 0); ctx.lineTo(-2, 14); ctx.stroke();
+    });
+    ctx.save(); ctx.translate(W / 2 - 160, 58); ctx.rotate(-0.08); drawFrameIcon(0, 0, 1.4); ctx.restore();
+    ctx.font = `700 50px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(40,20,90,.3)'; ctx.fillText('Moje rysunki', W / 2 - 118, 64);
+    ctx.fillStyle = '#FFFFFF'; ctx.fillText('Moje rysunki', W / 2 - 118, 60);
     if (S.galLoading) {
-      for (let i = 0; i < 3; i++) circle(W / 2 - 30 + i * 30, H / 2, 9 + Math.sin(S.time * 6 - i) * 3, C.violet);
+      for (let i = 0; i < 3; i++) circle(W / 2 - 30 + i * 30, H / 2, 9 + Math.sin(S.time * 6 - i) * 3, '#FFFFFF');
       return;
     }
     if (!S.gallery.length) {
@@ -1212,69 +1333,84 @@
       drawFrameIcon(0, 0, 4.5); ctx.restore();
       return;
     }
-    for (const { g, x, y } of galCards()) {
-      const cur = g.rec.id === S.galleryId;
-      ctx.save(); ctx.shadowColor = 'rgba(59,53,80,.2)'; ctx.shadowBlur = 12 * scale * DPR; ctx.shadowOffsetY = 4 * scale * DPR;
-      ctx.fillStyle = '#FFFFFF'; rr(x, y, GAL.cw, GAL.ch, 18); ctx.fill(); ctx.restore();
-      if (cur) { ctx.strokeStyle = C.violet; ctx.lineWidth = 5; rr(x, y, GAL.cw, GAL.ch, 18); ctx.stroke(); }
-      ctx.save(); rr(x + 10, y + 10, 260, 156, 10); ctx.clip();
-      ctx.fillStyle = g.rec.paper; ctx.fillRect(x + 10, y + 10, 260, 156);
-      if (g.img.complete && g.img.naturalWidth) ctx.drawImage(g.img, x + 10, y + 10, 260, 156);
+    // zdjęcia jak polaroidy przyklejone taśmą
+    for (const { g, i, x, y } of galCards()) {
+      const cur = g.rec.id === S.galleryId, rot = [-0.03, 0.02, -0.015, 0.03][i % 4];
+      ctx.save(); ctx.translate(x + GAL.cw / 2, y + GAL.ch / 2); ctx.rotate(rot); ctx.translate(-GAL.cw / 2, -GAL.ch / 2);
+      card(0, 0, GAL.cw, GAL.ch, 12);
+      if (cur) { ctx.strokeStyle = '#FFC23C'; ctx.lineWidth = 6; rr(-3, -3, GAL.cw + 6, GAL.ch + 6, 14); ctx.stroke(); }
+      ctx.save(); rr(10, 10, 260, 156, 6); ctx.clip();
+      ctx.fillStyle = g.rec.paper; ctx.fillRect(10, 10, 260, 156);
+      if (g.img.complete && g.img.naturalWidth) ctx.drawImage(g.img, 10, 10, 260, 156);
       ctx.restore();
-      // zapisz na urządzenie
-      const dx = x + 40, dy = y + 184;
-      circle(dx, dy, 18, C.soft);
-      ctx.strokeStyle = C.ink; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-      ctx.beginPath(); ctx.moveTo(dx, dy - 10); ctx.lineTo(dx, dy + 4); ctx.moveTo(dx - 6, dy - 2); ctx.lineTo(dx, dy + 4); ctx.lineTo(dx + 6, dy - 2);
-      ctx.moveTo(dx - 9, dy + 9); ctx.lineTo(dx + 9, dy + 9); ctx.stroke();
-      // kosz (drugie dotknięcie usuwa)
-      const tx2 = x + GAL.cw - 40, conf = S.galConfirm && S.galConfirm.id === g.rec.id;
-      ctx.save(); ctx.translate(tx2, dy); if (conf) ctx.rotate(Math.sin(S.time * 25) * 0.12);
+      tape(GAL.cw / 2, -2, (i % 2 ? 0.06 : -0.06), i % 2 ? '#8ED8FF' : '#FF9EC4');
+      const dy = 186;
+      candy(40, dy, 17, '#3D9BFF', 'dl' + g.rec.id, () => {
+        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 3.5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(0, 3); ctx.moveTo(-6, -3); ctx.lineTo(0, 3); ctx.lineTo(6, -3);
+        ctx.moveTo(-8, 8); ctx.lineTo(8, 8); ctx.stroke();
+      });
+      const conf = S.galConfirm && S.galConfirm.id === g.rec.id;
+      ctx.save(); ctx.translate(GAL.cw - 40, dy); if (conf) ctx.rotate(Math.sin(S.time * 25) * 0.12);
       if (conf) {
-        circle(0, 0, 22, C.red);
-        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 5; ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(-2, 8); ctx.lineTo(10, -7); ctx.stroke();
+        candy(0, 0, 21, '#E5312F', null, () => {
+          ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 5; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          ctx.beginPath(); ctx.moveTo(-9, 0); ctx.lineTo(-2, 8); ctx.lineTo(10, -7); ctx.stroke();
+        });
       } else {
-        circle(0, 0, 18, C.soft);
-        ctx.fillStyle = C.ink; ctx.fillRect(-9, -9, 18, 3); ctx.fillRect(-3, -12, 6, 3);
-        ctx.beginPath(); ctx.moveTo(-7, -4); ctx.lineTo(7, -4); ctx.lineTo(5, 10); ctx.lineTo(-5, 10); ctx.closePath(); ctx.fill();
+        candy(0, 0, 17, '#B9AED0', null, () => {
+          ctx.fillStyle = '#FFFFFF'; ctx.fillRect(-8, -8, 16, 3); ctx.fillRect(-3, -11, 6, 3);
+          ctx.beginPath(); ctx.moveTo(-6, -3); ctx.lineTo(6, -3); ctx.lineTo(4.5, 9); ctx.lineTo(-4.5, 9); ctx.closePath(); ctx.fill();
+        });
       }
+      ctx.restore();
       ctx.restore();
     }
     const pages = Math.ceil(S.gallery.length / 8);
     if (pages > 1) {
-      for (const [b, dir] of [[GAL_PREV, -1], [GAL_NEXT, 1]]) {
-        circle(b.x, b.y, b.r, C.violet);
-        ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath(); ctx.moveTo(b.x - 5 * dir, b.y - 12); ctx.lineTo(b.x + 7 * dir, b.y); ctx.lineTo(b.x - 5 * dir, b.y + 12); ctx.stroke();
+      for (const [b, dir, key] of [[GAL_PREV, -1, 'prev'], [GAL_NEXT, 1, 'next']]) {
+        candy(b.x, b.y, b.r, '#7C5CFF', key, () => {
+          ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 7; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+          ctx.beginPath(); ctx.moveTo(-5 * dir, -12); ctx.lineTo(7 * dir, 0); ctx.lineTo(-5 * dir, 12); ctx.stroke();
+        });
       }
-      for (let i = 0; i < pages; i++) circle(W / 2 - (pages - 1) * 11 + i * 22, GAL_PREV.y, i === S.galPage ? 8 : 5, i === S.galPage ? C.violet : '#CFC6DD');
+      for (let i = 0; i < pages; i++) circle(W / 2 - (pages - 1) * 11 + i * 22, GAL_PREV.y, i === S.galPage ? 8 : 5, i === S.galPage ? '#FFFFFF' : 'rgba(255,255,255,.45)');
     }
   }
 
   // ---------- rysowanie: ekran tytułowy ----------
   function drawTitle() {
-    ctx.fillStyle = 'rgba(59,53,80,.35)'; ctx.fillRect(0, 0, W, H);
-    ctx.fillStyle = C.panel; rr(W / 2 - 330, 96, 660, 420, 40); ctx.fill();
+    ctx.fillStyle = 'rgba(40,20,90,.3)'; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.translate(W / 2, 306); ctx.rotate(-0.015);
+    card(-330, -210, 660, 420, 44);
+    ctx.restore();
+    tape(W / 2 - 300, 104, -0.6, '#FF9EC4');
+    tape(W / 2 + 300, 104, 0.6, '#8ED8FF');
     const fan = [['kredka', '#E53935', -0.5], ['flamaster', '#1E88E5', -0.17], ['pedzel', '#2E9D4F', 0.17], ['olowek', '#FF9800', 0.5]];
     fan.forEach(([id, c, a], i) => {
-      ctx.save(); ctx.translate(W / 2, 250); ctx.rotate(-Math.PI / 2 + a + Math.sin(S.time * 2 + i) * 0.03);
+      ctx.save(); ctx.translate(W / 2, 250); ctx.rotate(-Math.PI / 2 + a + Math.sin(S.time * 2 + i) * 0.04);
       ctx.translate(30, 0); ctx.scale(0.85, 0.85); drawImpl(id, c); ctx.restore();
     });
-    const word = 'Rysowanka', cols = ['#E53935', '#FF9800', '#E9B000', '#2E9D4F', '#1E88E5', '#8E44AD', '#E8775A', '#26A69A', '#D81B60'];
-    ctx.font = `700 96px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    const word = 'Rysowanka', cols = ['#FF5A6E', '#FF8A00', '#F5B700', '#22B573', '#2D8CFF', '#7C5CFF', '#FF4FA3', '#00B8A9', '#FF7A45'];
+    ctx.font = `700 98px ${FONT}`; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.lineJoin = 'round';
     const total = ctx.measureText(word).width;
     let x = W / 2 - total / 2;
     [...word].forEach((ch, i) => {
-      ctx.fillStyle = cols[i % cols.length];
-      ctx.fillText(ch, x, 300 + Math.sin(S.time * 3 + i * 0.6) * 5);
-      x += ctx.measureText(ch).width;
+      const y = 302 + Math.sin(S.time * 3 + i * 0.6) * 6, w = ctx.measureText(ch).width;
+      ctx.save(); ctx.translate(x + w / 2, y); ctx.rotate(Math.sin(S.time * 2 + i) * 0.06);
+      ctx.fillStyle = shade(cols[i], -0.35); ctx.fillText(ch, -w / 2, 5);
+      ctx.fillStyle = cols[i]; ctx.fillText(ch, -w / 2, 0);
+      ctx.restore();
+      x += w;
     });
-    drawEmoji('🦄', W / 2 - 220, 430, 84);
-    drawEmoji('⭐', W / 2 + 220, 430, 76);
+    drawEmoji('🦄', W / 2 - 220, 430 + Math.sin(S.time * 2) * 5, 88);
+    drawEmoji('🌈', W / 2 + 220, 430 + Math.sin(S.time * 2 + 1) * 5, 84);
     const s = 1 + Math.sin(S.time * 4) * 0.05;
     ctx.save(); ctx.translate(PLAY_BTN.x, PLAY_BTN.y); ctx.scale(s, s);
-    circle(0, 6, PLAY_BTN.r, 'rgba(59,53,80,.2)'); circle(0, 0, PLAY_BTN.r, C.violet);
-    ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(-20, -32); ctx.lineTo(36, 0); ctx.lineTo(-20, 32); ctx.closePath(); ctx.fill();
+    candy(0, 0, PLAY_BTN.r, '#7C5CFF', null, () => {
+      ctx.fillStyle = '#FFFFFF'; ctx.beginPath(); ctx.moveTo(-18, -30); ctx.lineTo(34, 0); ctx.lineTo(-18, 30); ctx.closePath(); ctx.fill();
+    });
     ctx.restore();
   }
 
